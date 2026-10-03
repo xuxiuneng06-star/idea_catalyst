@@ -6,9 +6,6 @@ potential interdisciplinary connections and solutions.
 """
 
 import os
-# Environment configuration
-os.environ["HF_HOME"] = "/shared/data3/pk36/.cache"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -829,6 +826,13 @@ def parse_arguments():
         help="Skip processing if output file already exists."
     )
 
+    parser.add_argument(
+        "--tensor_parallel_size",
+        type=int,
+        default=1,
+        help="Number of GPUs for vLLM tensor parallelism."
+    )
+
     return parser.parse_args()
 
 
@@ -843,7 +847,7 @@ def main():
 
     # Initialize vLLM model
     print("Loading model...")
-    llm = LLM(model=args.model_name, tensor_parallel_size=2)
+    llm = LLM(model=args.model_name, tensor_parallel_size=args.tensor_parallel_size)
     print("Model loaded.\n")
 
     # Process each problem

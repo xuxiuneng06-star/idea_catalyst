@@ -1,7 +1,9 @@
 adapters
+json_repair
 numpy
 pandas
 pydantic
+requests
 scikit_learn
 setuptools
 spacy
@@ -9,4 +11,5 @@ torch
 tqdm
 transformers
 typing_extensions
-vllm
+# Pinned to the release current when the repo was published (2026-03); newer vLLM may change the structured-output API.
+vllm==0.17.1

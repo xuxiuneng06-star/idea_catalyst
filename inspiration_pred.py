@@ -6,9 +6,6 @@ potential interdisciplinary connections and solutions.
 """
 
 import os
-# Environment configuration
-os.environ["HF_HOME"] = "/shared/data3/pk36/.cache"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import json
 import argparse
@@ -974,6 +971,19 @@ def parse_arguments():
         help="Skip processing if output file already exists."
     )
 
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Only process the first N problems (for smoke tests)."
+    )
+    parser.add_argument(
+        "--tensor_parallel_size",
+        type=int,
+        default=1,
+        help="Number of GPUs for vLLM tensor parallelism."
+    )
+
     return parser.parse_args()
 
 
@@ -985,10 +995,12 @@ def main():
     problems = load_problems(args.problem_file)
     if not problems:
         return
+    if args.limit is not None:
+        problems = dict(list(problems.items())[:args.limit])
 
     # Initialize vLLM model
     print("Loading model...")
-    llm = LLM(model=args.model_name, tensor_parallel_size=2)
+    llm = LLM(model=args.model_name, tensor_parallel_size=args.tensor_parallel_size)
     print("Model loaded.\n")
 
     # Process each problem

@@ -1,7 +1,16 @@
 import requests
 from collections import defaultdict
 import time
-from config import API_KEY
+import os
+
+# Prefer the S2_API_KEY environment variable; fall back to config.py.
+API_KEY = os.environ.get("S2_API_KEY")
+if not API_KEY:
+    try:
+        from config import API_KEY
+    except ImportError:
+        API_KEY = None
+        print("Warning: no Semantic Scholar API key (set S2_API_KEY); requests will be heavily rate limited.")
 
 def search_semantic_scholar(query, coarse_domain, limit=5, year=None, baseline=False):
     url = "http://api.semanticscholar.org/graph/v1/snippet/search"
@@ -21,9 +30,9 @@ def search_semantic_scholar(query, coarse_domain, limit=5, year=None, baseline=F
         query_params["year"] = f"-{year-1}"
 
     if baseline:
-        headers = {"x-api-key": API_KEY}
+        headers = {"x-api-key": API_KEY} if API_KEY else {}
     else:
-        headers = {"x-api-key": API_KEY}
+        headers = {"x-api-key": API_KEY} if API_KEY else {}
     
     print(f"\t -Searching Semantic Scholar for query: {query} in domain: {coarse_domain}.")
 
@@ -52,7 +61,7 @@ def fetch_paper_details(paper_id):
     params = {
         "fields": "title,abstract"
     }
-    headers = {"x-api-key": API_KEY}
+    headers = {"x-api-key": API_KEY} if API_KEY else {}
     
     while True:
         response = requests.get(url, params=params, headers=headers, allow_redirects=True)

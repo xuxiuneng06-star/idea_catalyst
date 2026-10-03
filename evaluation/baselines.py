@@ -6,9 +6,6 @@ the full pipeline in inspiration_pred.py.
 """
 
 import os
-# Environment configuration
-os.environ["HF_HOME"] = "/shared/data3/pk36/.cache"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import json
 import argparse
@@ -843,6 +840,13 @@ def parse_arguments():
         help="Frequency of saving outputs."
     )
 
+    parser.add_argument(
+        "--tensor_parallel_size",
+        type=int,
+        default=1,
+        help="Number of GPUs for vLLM tensor parallelism."
+    )
+
     return parser.parse_args()
 
 
@@ -861,7 +865,7 @@ def main():
     
     # Initialize vLLM model
     print("Loading model...")
-    llm = LLM(model=args.model_name, tensor_parallel_size=1)
+    llm = LLM(model=args.model_name, tensor_parallel_size=args.tensor_parallel_size)
     print("Model loaded.\n")
     
     # Create output directory
