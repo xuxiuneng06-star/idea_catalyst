@@ -12,6 +12,31 @@ if not API_KEY:
         API_KEY = None
         print("Warning: no Semantic Scholar API key (set S2_API_KEY); requests will be heavily rate limited.")
 
+MIN_INTERVAL = 1.05  # keyed accounts start at 1 request/second
+MAX_BACKOFF = 60
+_last_request = 0.0
+
+def _get_with_backoff(url, params, headers):
+    """GET with client-side throttling and exponential backoff on 429/5xx."""
+    global _last_request
+    delay = 1
+    while True:
+        wait = MIN_INTERVAL - (time.time() - _last_request)
+        if wait > 0:
+            time.sleep(wait)
+        _last_request = time.time()
+        response = requests.get(url, params=params, headers=headers, allow_redirects=True)
+        if response.status_code == 200:
+            return response
+        if response.status_code == 429 or response.status_code >= 500:
+            retry_after = response.headers.get('Retry-After')
+            sleep_for = int(retry_after) if retry_after and retry_after.isdigit() else delay
+            print(f"HTTP {response.status_code}. Retrying after {sleep_for} seconds...")
+            time.sleep(sleep_for)
+            delay = min(delay * 2, MAX_BACKOFF)
+        else:
+            response.raise_for_status()
+
 def search_semantic_scholar(query, coarse_domain, limit=5, year=None, baseline=False):
     url = "http://api.semanticscholar.org/graph/v1/snippet/search"
     # Valid Semantic Scholar domains
@@ -36,17 +61,7 @@ def search_semantic_scholar(query, coarse_domain, limit=5, year=None, baseline=F
     
     print(f"\t -Searching Semantic Scholar for query: {query} in domain: {coarse_domain}.")
 
-    while True:
-        response = requests.get(url, params=query_params, headers=headers, allow_redirects=True)
-        
-        if response.status_code == 200:
-            break
-        elif response.status_code == 429:
-            retry_after = int(response.headers.get('Retry-After', 1))
-            print(f"Rate limited. Retrying after {retry_after} seconds...")
-            time.sleep(retry_after)
-        else:
-            response.raise_for_status()
+    response = _get_with_backoff(url, query_params, headers)
     
     if response.status_code == 200:
         return_response = response.json()['data']
@@ -63,17 +78,7 @@ def fetch_paper_details(paper_id):
     }
     headers = {"x-api-key": API_KEY} if API_KEY else {}
     
-    while True:
-        response = requests.get(url, params=params, headers=headers, allow_redirects=True)
-        
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 429:
-            retry_after = int(response.headers.get('Retry-After', 10))
-            print(f"Rate limited. Retrying after {retry_after} seconds...")
-            time.sleep(retry_after)
-        else:
-            response.raise_for_status()
+    return _get_with_backoff(url, params, headers).json()
 
 def collect_snippets(response):
     snippets = defaultdict(list)
